@@ -1,0 +1,1003 @@
+HTML
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Biblivre - Sistema de Cadastro e Biblioteca</title>
+    <script src="https://cdn.tailwindcss.com/"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght=300;400;500;600;700;800&family=Material+Icons&display=swap" rel="stylesheet">
+    
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+    
+    <style>
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            color: #f1f5f9; 
+            margin: 0; 
+            min-height: 100vh; 
+            display: flex; 
+            flex-direction: column;
+            overflow-x: hidden;
+            background: #000000;
+        }
+        
+        /* Fundo Dinâmico com tons de preto mais profundos */
+        .bg-animated-gradient {
+            background: linear-gradient(-45deg, #000000, #030712, #1d4ed8, #000000, #7e22ce, #000000);
+            background-size: 400% 400%;
+            animation: gradientMove 25s ease infinite;
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            z-index: -2;
+        }
+
+        @keyframes gradientMove {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* Livros Flutuantes Menos Transparentes (Opacidade Aumentada) */
+        .floating-book {
+            position: fixed;
+            font-size: 2rem;
+            user-select: none;
+            pointer-events: none;
+            animation: floatUp linear infinite;
+            z-index: -1;
+            opacity: 0;
+            filter: drop-shadow(0 10px 15px rgba(124, 58, 237, 0.3));
+            will-change: transform, opacity;
+        }
+
+        @keyframes floatUp {
+            0% { transform: translateY(110vh) rotate(0deg) scale(0.7); opacity: 0; }
+            15% { opacity: 0.45; }
+            85% { opacity: 0.45; }
+            100% { transform: translateY(-15vh) rotate(360deg) scale(1.1); opacity: 0; }
+        }
+
+        /* Glassmorphism */
+        .glass-card {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+        }
+
+        /* Animações */
+        .card-enter {
+            animation: cardSlideUp 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+
+        @keyframes cardSlideUp {
+            from { opacity: 0; transform: translateY(20px) scale(0.97); filter: blur(3px); }
+            to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+        }
+        
+        .hidden { display: none !important; }
+        
+        * {
+            transition: background-color 0.3s ease, border-color 0.3s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2) !important;
+            border-color: #6366f1 !important;
+        }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.3); }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #4f46e5; }
+    </style>
+</head>
+<body class="relative">
+
+    <div class="bg-animated-gradient"></div>
+    <div id="booksContainer"></div>
+
+    <div id="toast-container" class="fixed top-4 right-4 left-4 md:left-auto md:top-6 md:right-6 z-50 flex flex-col gap-3 pointer-events-none"></div>
+
+    <!-- TELA DE LOGIN -->
+    <main id="telaLogin" class="flex-1 flex items-center justify-center p-4 sm:p-6 z-10 relative">
+        <div class="glass-card p-6 sm:p-10 rounded-[2rem] w-full max-w-md text-center card-enter">
+            
+            <div class="bg-indigo-600/10 w-20 h-20 sm:w-24 sm:h-24 rounded-3xl flex items-center justify-center mx-auto mb-6 border border-indigo-500/20 shadow-[0_0_40px_rgba(99,102,241,0.2)]">
+                <span class="material-icons text-4xl sm:text-5xl text-indigo-400">auto_stories</span>
+            </div>
+            
+            <!-- Seleção de Perfil -->
+            <div id="roleSelectionStep">
+                <h1 class="text-2xl sm:text-3xl font-extrabold text-white mb-2 tracking-tight">Biblivre</h1>
+                <p class="text-sm text-slate-400 mb-8 sm:mb-10">Bem-vindo. Selecione o seu perfil de acesso.</p>
+                
+                <div class="space-y-4 sm:space-y-5">
+                    <button onclick="selecionarPortal('aluno')" class="w-full bg-slate-900/50 hover:bg-slate-900/90 border border-slate-800/80 hover:border-indigo-500/60 p-4 sm:p-6 rounded-2xl sm:rounded-3xl flex items-center gap-4 sm:gap-5 text-left group hover:scale-[1.01]">
+                        <div class="bg-indigo-500/10 group-hover:bg-indigo-500/20 w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl flex items-center justify-center border border-indigo-500/20 text-indigo-400 transition-all text-2xl sm:text-3xl">
+                            🏫
+                        </div>
+                        <div>
+                            <h3 class="text-white font-bold text-sm sm:text-base">Portal do Aluno</h3>
+                            <p class="text-xs text-slate-400">Consultar livros, ler PDFs e usar a IA.</p>
+                        </div>
+                    </button>
+
+                    <button onclick="selecionarPortal('admin')" class="w-full bg-slate-900/50 hover:bg-slate-900/90 border border-slate-800/80 hover:border-purple-500/60 p-4 sm:p-6 rounded-2xl sm:rounded-3xl flex items-center gap-4 sm:gap-5 text-left group hover:scale-[1.01]">
+                        <div class="bg-purple-500/10 group-hover:bg-purple-500/20 w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl flex items-center justify-center border border-purple-500/20 text-purple-400 transition-all text-2xl sm:text-3xl">
+                            ⚙️
+                        </div>
+                        <div>
+                            <h3 class="text-white font-bold text-sm sm:text-base">Administração / Dev</h3>
+                            <p class="text-xs text-slate-400">Gerir empréstimos, alunos e livros do acervo.</p>
+                        </div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Login Step -->
+            <div id="loginStep" class="hidden">
+                <h1 id="loginTitle" class="text-2xl sm:text-3xl font-extrabold text-white mb-2 tracking-tight">Entrar</h1>
+                <p id="loginSubtitle" class="text-xs sm:text-sm text-slate-400 mb-8">Sistema de Cadastro Integrado</p>
+
+                <form onsubmit="fazerLogin(event)" class="space-y-4 sm:space-y-5 text-left">
+                    <div>
+                        <label class="block text-[10px] sm:text-xs font-bold text-slate-300 uppercase tracking-wider mb-2 px-1">Usuário / Cadastro</label>
+                        <input type="text" id="inputUsuario" required class="w-full bg-slate-950/40 border border-slate-800/80 rounded-2xl px-4 py-3.5 sm:px-5 sm:py-4 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-0">
+                    </div>
+                    <div>
+                        <div class="flex justify-between items-center mb-2 px-1">
+                            <label class="block text-[10px] sm:text-xs font-bold text-slate-300 uppercase tracking-wider">Palavra-passe</label>
+                            <button type="button" onclick="irParaPassoRecuperacao()" class="text-[10px] sm:text-xs text-indigo-400 hover:text-indigo-300 transition-colors font-semibold">Esqueceu-se da senha?</button>
+                        </div>
+                        <input type="password" id="inputSenha" required class="w-full bg-slate-950/40 border border-slate-800/80 rounded-2xl px-4 py-3.5 sm:px-5 sm:py-4 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-0">
+                    </div>
+                    
+                    <div id="loginErro" class="text-red-400 text-xs sm:text-sm hidden text-center bg-red-950/40 py-3 rounded-2xl border border-red-500/20 animate-pulse">
+                        Credenciais inválidas ou portal incorreto.
+                    </div>
+                    
+                    <button type="submit" class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold py-3.5 sm:py-4 rounded-2xl transition-all shadow-lg shadow-indigo-600/20 hover:scale-[1.01] mt-2">
+                        Iniciar Sessão
+                    </button>
+                </form>
+
+                <div class="mt-6 sm:mt-8 pt-5 border-t border-slate-800/50">
+                    <button onclick="voltarParaSelecao()" class="text-[10px] sm:text-xs text-slate-500 hover:text-slate-300 font-semibold flex items-center justify-center gap-1.5 mx-auto">
+                        <span class="material-icons text-sm">arrow_back</span> Voltar à seleção de portal
+                    </button>
+                </div>
+            </div>
+
+            <!-- Recuperação e Código -->
+            <div id="recuperarStep" class="hidden">
+                <h1 class="text-2xl font-extrabold text-white mb-2 tracking-tight">Recuperar Acesso</h1>
+                <p class="text-xs text-slate-400 mb-6">Insira o e-mail cadastrado na conta para receber o código.</p>
+                <div class="space-y-4 text-left">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-300 uppercase tracking-wider mb-2 px-1">E-mail Cadastrado</label>
+                        <input type="email" id="recuperarEmail" class="w-full bg-slate-950/40 border border-slate-800/80 rounded-2xl px-5 py-4 text-sm text-white focus:outline-none">
+                    </div>
+                    <button type="button" id="btnEnviarEmail" onclick="dispararBotCodigo()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2.5">
+                        <span class="material-icons text-xl" id="iconEnvio">email</span> <span id="textoEnvio">Mandar Código de Segurança</span>
+                    </button>
+                    <button type="button" onclick="voltarParaLogin()" class="w-full text-center text-xs text-slate-500 hover:text-slate-300 py-1">Voltar para o Login</button>
+                </div>
+            </div>
+            
+            <div id="codigoStep" class="hidden">
+                <h1 class="text-2xl font-extrabold text-white mb-2 tracking-tight">Código de Segurança</h1>
+                <div class="space-y-4 text-left">
+                    <input type="text" id="codigoVerificacao" maxlength="6" class="w-full bg-slate-950/40 border border-slate-800/80 rounded-2xl px-4 py-4 text-center text-xl font-mono font-bold tracking-[0.4em] text-white focus:outline-none">
+                    <button type="button" onclick="validarCode()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 rounded-2xl hover:scale-[1.01]">Validar Código</button>
+                </div>
+            </div>
+
+            <div id="novaSenhaStep" class="hidden">
+                <h1 class="text-2xl font-extrabold text-white mb-2 tracking-tight">Nova Senha</h1>
+                <div class="space-y-4 text-left">
+                    <input type="password" id="novaSenhaInput" class="w-full bg-slate-950/40 border border-slate-800/80 rounded-2xl px-5 py-3.5 text-white mb-3 focus:outline-none" placeholder="Nova Senha">
+                    <input type="password" id="novaSenhaConfirmInput" class="w-full bg-slate-950/40 border border-slate-800/80 rounded-2xl px-5 py-3.5 text-white focus:outline-none" placeholder="Confirmar Senha">
+                    <button type="button" onclick="salvarNovaSenha()" class="w-full bg-gradient-to-r from-emerald-600 to-indigo-600 hover:from-emerald-500 hover:to-indigo-500 text-white font-bold py-4 rounded-2xl shadow-lg mt-4">Redefinir Senha</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- HEADER DO SISTEMA -->
+    <header id="headerSistema" class="hidden glass-card border-b border-slate-800/50 p-4 sm:p-5 sticky top-0 z-30 transition-all duration-300">
+        <div class="max-w-7xl mx-auto flex flex-wrap gap-4 justify-between items-center">
+            <div class="flex items-center gap-2 sm:gap-3">
+                <span class="material-icons text-indigo-400 text-2xl sm:text-3xl">auto_stories</span>
+                <span class="text-xl sm:text-2xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-purple-400 tracking-tight">Biblivre</span>
+            </div>
+            
+            <div class="flex items-center gap-2 sm:gap-3 ml-auto sm:ml-0">
+                <!-- Seletor Dev -->
+                <div id="devSelector" class="hidden items-center gap-1 bg-slate-950/80 border border-slate-800 rounded-full p-1">
+                    <button id="btnDevAdmin" onclick="togglePainelDev('admin')" class="px-3 py-1.5 text-[10px] sm:text-xs font-bold rounded-full transition-all bg-indigo-600 text-white">⚙️ Admin</button>
+                    <button id="btnDevAluno" onclick="togglePainelDev('aluno')" class="px-3 py-1.5 text-[10px] sm:text-xs font-bold rounded-full transition-all text-slate-400 hover:text-white">🏫 Aluno</button>
+                </div>
+
+                <div class="text-right hidden md:block">
+                    <p id="headerNome" class="text-sm font-bold text-white"></p>
+                    <p id="headerTipo" class="text-[10px] text-indigo-400 uppercase font-bold tracking-wider"></p>
+                </div>
+                
+                <button onclick="abrirModalPerfil()" class="relative hover:scale-105 transition-transform shrink-0">
+                    <img id="headerAvatar" src="" alt="Avatar" class="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 border-indigo-500 object-cover bg-slate-800 shadow-[0_0_15px_rgba(99,102,241,0.3)]">
+                </button>
+                
+                <button onclick="fazerLogout()" class="bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all border border-red-500/20 flex items-center gap-1.5">
+                    <span class="material-icons text-sm sm:text-base">logout</span> <span class="hidden sm:inline">Sair</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- TELA PAINEL ADMINISTRATIVO -->
+    <section id="telaAdmin" class="hidden max-w-7xl mx-auto p-4 sm:p-6 space-y-6 z-10 relative flex-1 w-full">
+        <h2 class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">Painel de Gestão</h2>
+        
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Cadastrar Usuário/Aluno -->
+            <div class="glass-card p-5 sm:p-6 rounded-2xl space-y-4">
+                <div class="flex items-center gap-2 text-indigo-400 font-bold text-base sm:text-lg mb-1">
+                    <span class="material-icons">person_add</span> Cadastrar Novo Usuário
+                </div>
+                <form onsubmit="cadastrarAlunoAdmin(event)" class="space-y-4">
+                    <div id="divTipoConta" class="hidden">
+                        <label class="block text-[10px] font-semibold text-slate-300 uppercase tracking-wider mb-1">Tipo de Conta (Visível apenas para DEV)</label>
+                        <select id="admCadTipo" class="w-full bg-slate-950/40 border border-slate-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none">
+                            <option value="aluno">Aluno (Padrão)</option>
+                            <option value="admin">Administrador</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-semibold text-slate-300 uppercase tracking-wider mb-1">Nome Completo</label>
+                        <input type="text" id="admCadNome" required class="w-full bg-slate-950/40 border border-slate-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-semibold text-slate-300 uppercase tracking-wider mb-1">Usuário de Acesso</label>
+                        <input type="text" id="admCadUser" required class="w-full bg-slate-950/40 border border-slate-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-semibold text-slate-300 uppercase tracking-wider mb-1">E-mail</label>
+                        <input type="email" id="admCadEmail" required class="w-full bg-slate-950/40 border border-slate-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-semibold text-slate-300 uppercase tracking-wider mb-1">Turma</label>
+                        <input type="text" id="admCadTurma" required placeholder="Ex: 10º Ano A" class="w-full bg-slate-950/40 border border-slate-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none">
+                    </div>
+                    <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 py-2.5 rounded-xl text-sm font-bold shadow-md hover:scale-[1.01]">Registrar Conta</button>
+                </form>
+            </div>
+
+            <!-- Adicionar Livros -->
+            <div class="glass-card p-5 sm:p-6 rounded-2xl space-y-4">
+                <div class="flex items-center gap-2 text-indigo-400 font-bold text-base sm:text-lg mb-1">
+                    <span class="material-icons">library_add</span> Adicionar Novo Livro
+                </div>
+                <form onsubmit="cadastrarLivroAdmin(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-[10px] font-semibold text-slate-300 uppercase tracking-wider mb-1">Título do Livro</label>
+                        <input type="text" id="livroTitulo" required class="w-full bg-slate-950/40 border border-slate-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-semibold text-slate-300 uppercase tracking-wider mb-1">Autor</label>
+                        <input type="text" id="livroAutor" required class="w-full bg-slate-950/40 border border-slate-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none">
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[10px] font-semibold text-slate-300 uppercase tracking-wider mb-1">Gênero</label>
+                            <input type="text" id="livroGenero" required class="w-full bg-slate-950/40 border border-slate-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-semibold text-slate-300 uppercase tracking-wider mb-1">Emoji Ícone</label>
+                            <input type="text" id="livroIcone" required placeholder="📖" class="w-full bg-slate-950/40 border border-slate-800 rounded-xl px-4 py-2 text-center text-sm text-white focus:outline-none">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-semibold text-slate-300 uppercase tracking-wider mb-1">Estante Física / Alocação</label>
+                        <input type="text" id="livroEstante" required class="w-full bg-slate-950/40 border border-slate-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none">
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[10px] font-semibold text-slate-300 uppercase tracking-wider mb-1">Formato</label>
+                            <select id="livroFormato" onchange="toggleFormatoLivro()" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none">
+                                <option value="Físico">Físico</option>
+                                <option value="Digital">Digital (PDF)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label id="labelLocal" class="block text-[10px] font-semibold text-slate-300 uppercase tracking-wider mb-1">Prateleira</label>
+                            <input type="text" id="livroLocal" required class="w-full bg-slate-950/40 border border-slate-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none">
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 py-2.5 rounded-xl text-sm font-bold shadow-md hover:scale-[1.01]">Adicionar Livro</button>
+                </form>
+            </div>
+
+            <!-- Empréstimos e Devoluções -->
+            <div class="glass-card p-5 sm:p-6 rounded-2xl space-y-4">
+                <div class="flex items-center gap-2 text-indigo-400 font-bold text-base sm:text-lg mb-1">
+                    <span class="material-icons">swap_horiz</span> Novo Empréstimo
+                </div>
+                <form onsubmit="registrarEmprestimo(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-[10px] font-semibold text-slate-300 uppercase tracking-wider mb-1">Selecione o Aluno</label>
+                        <select id="selectAluno" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none"></select>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-semibold text-slate-300 uppercase tracking-wider mb-1">Selecione o Livro Físico</label>
+                        <select id="selectLivro" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none"></select>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-semibold text-slate-300 uppercase tracking-wider mb-1">Data Limite de Devolução</label>
+                        <input type="date" id="dataDevolucao" required class="w-full bg-slate-950/40 border border-slate-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none">
+                    </div>
+                    <button type="submit" class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 py-2.5 rounded-xl text-sm font-bold shadow-md hover:scale-[1.01]">Confirmar Saída</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Tabela responsiva de Empréstimos Ativos -->
+        <div class="glass-card p-4 sm:p-6 rounded-2xl space-y-4">
+            <h3 class="text-lg sm:text-xl font-bold text-white flex items-center gap-2"><span class="material-icons text-indigo-400">assignment</span> Monitor de Empréstimos Ativos</h3>
+            <div class="overflow-x-auto rounded-xl border border-slate-800/80 -mx-4 sm:mx-0">
+                <table class="w-full min-w-[600px] text-left border-collapse text-xs sm:text-sm">
+                    <thead>
+                        <tr class="bg-slate-950 text-slate-400 font-semibold border-b border-slate-850">
+                            <th class="p-4">Aluno</th>
+                            <th class="p-4">Turma</th>
+                            <th class="p-4">Livro</th>
+                            <th class="p-4">Prazo de Entrega</th>
+                            <th class="p-4 text-center">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaEmprestimos" class="divide-y divide-slate-850">
+                        <!-- Gerado por JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- TELA PORTAL DO ALUNO -->
+    <section id="telaAluno" class="hidden max-w-7xl mx-auto p-4 sm:p-6 space-y-6 sm:space-y-8 z-10 relative flex-1 w-full">
+        <!-- Dashboard do Aluno -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+            <div class="glass-card p-5 rounded-2xl flex items-center gap-4">
+                <div class="w-12 h-12 rounded-xl bg-indigo-600/20 text-indigo-400 flex items-center justify-center border border-indigo-500/20"><span class="material-icons">menu_book</span></div>
+                <div>
+                    <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Meus Empréstimos</h4>
+                    <p id="totalMeusEmprestimos" class="text-xl sm:text-2xl font-extrabold text-white">0</p>
+                </div>
+            </div>
+            <div class="glass-card p-5 rounded-2xl flex items-center gap-4">
+                <div class="w-12 h-12 rounded-xl bg-purple-600/20 text-purple-400 flex items-center justify-center border border-purple-500/20"><span class="material-icons">class</span></div>
+                <div>
+                    <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Turma Alocada</h4>
+                    <p id="infoMinhaTurma" class="text-sm sm:text-base font-bold text-white">-</p>
+                </div>
+            </div>
+            <div class="glass-card p-5 rounded-2xl flex items-center gap-4">
+                <div class="w-12 h-12 rounded-xl bg-emerald-600/20 text-emerald-400 flex items-center justify-center border border-emerald-500/20"><span class="material-icons">verified_user</span></div>
+                <div>
+                    <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Status Cadastral</h4>
+                    <p class="text-xs sm:text-sm font-bold text-emerald-400 flex items-center gap-1"><span class="material-icons text-sm">check_circle</span> Ativo no Biblivre</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Biblioteca Acervo -->
+        <div class="glass-card p-5 sm:p-6 rounded-2xl">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                <div>
+                    <h3 class="text-xl sm:text-2xl font-extrabold text-white tracking-tight">Acervo de Livros</h3>
+                    <p class="text-xs sm:text-sm text-slate-400">Procure exemplares digitais e consulte prateleiras físicas.</p>
+                </div>
+                <div class="relative w-full md:w-80">
+                    <span class="material-icons absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 text-lg">search</span>
+                    <input type="text" id="filtroAcervo" oninput="renderizarOrganizadorEstantes()" placeholder="Pesquisar por título ou autor..." class="w-full bg-slate-950/40 border border-slate-800 rounded-full pl-11 pr-4 py-3 text-xs sm:text-sm text-white focus:outline-none">
+                </div>
+            </div>
+
+            <div id="estantesContainer" class="space-y-6 sm:space-y-8"></div>
+        </div>
+
+        <!-- Assistente IA Integrado -->
+        <div class="glass-card p-5 sm:p-6 rounded-2xl space-y-4 max-w-3xl mx-auto border border-indigo-500/10">
+            <div class="flex items-center gap-2.5">
+                <div class="bg-indigo-600/20 border border-indigo-500/20 p-2 rounded-xl text-indigo-400">
+                    <span class="material-icons">smart_toy</span>
+                </div>
+                <div>
+                    <h3 class="text-base sm:text-lg font-bold text-white leading-none">Assistente IA Universal</h3>
+                    <p class="text-[10px] sm:text-xs text-slate-400 mt-1">Pergunte o que quiser (estudos, livros, conhecimentos gerais) - Conteúdos explícitos são bloqueados.</p>
+                </div>
+            </div>
+            
+            <div id="chatConversa" class="bg-slate-950/60 border border-slate-900 rounded-xl h-56 sm:h-72 p-4 overflow-y-auto flex flex-col scroll-smooth">
+                <div class="flex items-start gap-2 mb-4">
+                    <div class="bg-indigo-500 w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-md"><span class="material-icons text-white text-xs">smart_toy</span></div>
+                    <div class="bg-slate-900 border border-slate-850 p-3 rounded-2xl rounded-tl-none text-xs sm:text-sm text-slate-200 max-w-[85%] shadow-md leading-relaxed">Olá! Sou a IA avançada do Biblivre. Posso ajudar com livros, matérias escolares, história, ciência ou qualquer outra dúvida que tenha!</div>
+                </div>
+            </div>
+            
+            <form onsubmit="perguntarIA(event)" class="flex gap-2">
+                <input type="text" id="chatInput" placeholder="Faça uma pergunta livre..." required class="flex-1 bg-slate-950/40 border border-slate-800 rounded-xl px-4 py-3 text-xs sm:text-sm text-white focus:outline-none">
+                <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 px-4 sm:px-5 rounded-xl text-white font-bold text-xs sm:text-sm flex items-center gap-1 transition-all hover:scale-105"><span class="material-icons text-sm sm:text-base">send</span></button>
+            </form>
+        </div>
+    </section>
+
+    <!-- RODAPÉ -->
+    <footer class="w-full flex items-center justify-center gap-3 py-6 text-[10px] sm:text-xs font-semibold text-slate-600 z-10 relative mt-auto border-t border-slate-800/30 bg-slate-950/50 backdrop-blur-sm">
+        <span>&copy; Biblivre - Todos os direitos reservados</span>
+    </footer>
+
+    <!-- MODAL DE PERFIL -->
+    <div id="modalPerfil" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-opacity duration-300">
+        <div class="glass-card rounded-[2rem] p-6 sm:p-8 w-full max-w-sm shadow-2xl relative card-enter">
+            <button onclick="fecharModalPerfil()" class="absolute top-5 right-5 text-slate-500 hover:text-white"><span class="material-icons">close</span></button>
+            <h2 class="text-xl sm:text-2xl font-extrabold text-white mb-6 text-center tracking-tight">Foto de Perfil</h2>
+            
+            <div class="flex justify-center mb-6 relative">
+                <img id="previewNovaFoto" src="" class="w-32 h-32 sm:w-36 sm:h-36 rounded-full object-cover border-4 border-indigo-500 shadow-[0_0_30px_rgba(99,102,241,0.3)] bg-slate-800">
+                <div id="loadingIA" class="hidden absolute inset-0 bg-slate-950/80 rounded-full flex items-center justify-center">
+                    <span class="material-icons text-white animate-spin text-2xl sm:text-3xl">refresh</span>
+                </div>
+            </div>
+
+            <div class="flex flex-col gap-3">
+                <button type="button" onclick="gerarFotoIA()" class="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 py-3 rounded-xl text-xs sm:text-sm font-semibold transition-all shadow-lg flex items-center justify-center gap-2 hover:scale-[1.01]">
+                    <span class="material-icons text-base">auto_awesome</span> Gerar Avatar por IA
+                </button>
+            </div>
+
+            <div class="mt-6 sm:mt-8 flex gap-3 pt-5 border-t border-slate-800/50">
+                <button onclick="fecharModalPerfil()" class="w-full bg-slate-800 hover:bg-slate-700 py-2.5 rounded-xl font-semibold transition-colors text-xs sm:text-sm">Cancelar</button>
+                <button onclick="salvarNovaFoto()" class="w-full bg-emerald-600 hover:bg-emerald-500 py-2.5 rounded-xl font-bold transition-colors text-xs sm:text-sm">Guardar Foto</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPTS -->
+    <script>
+        const EMAILJS_PUBLIC_KEY = ""; 
+        const EMAILJS_SERVICE_ID = ""; 
+        const EMAILJS_TEMPLATE_ID = ""; 
+
+        if(EMAILJS_PUBLIC_KEY !== "") {
+            emailjs.init(EMAILJS_PUBLIC_KEY);
+        }
+
+        function ajustarPasso(passoId) {
+            const passos = ['roleSelectionStep', 'loginStep', 'recuperarStep', 'codigoStep', 'novaSenhaStep'];
+            passos.forEach(p => {
+                const el = document.getElementById(p);
+                if(p === passoId) {
+                    el.classList.remove('hidden');
+                    el.classList.remove('card-enter');
+                    void el.offsetWidth;
+                    el.classList.add('card-enter');
+                } else {
+                    el.classList.add('hidden');
+                }
+            });
+        }
+        
+        let usuarios = [
+            { id: 1, nome: "Administrador", cadastro: "Admin", email: "admin@escola.com", senha: "1234", tipo: "admin", foto: "" },
+            { id: 2, nome: "GIP-DGB", cadastro: "GIP-DGB", email: "gip@dgb.com", senha: "Ciganoindiano", tipo: "dev", foto: "" }, 
+            { id: 3, nome: "João Silva", cadastro: "aluno1", email: "joao@escola.com", senha: "123", tipo: "aluno", turma: "1º Ano A", foto: "" }
+        ];
+
+        let livros = [
+            { id: 1, titulo: "Dom Casmurro", autor: "Machado de Assis", icone: "📖", formato: "Físico", local: "Prateleira Superior", genero: "Romance", estante: "Estante Azul (Literatura)" },
+            { id: 2, titulo: "Física Quântica Moderna", autor: "J. Silva", icone: "⚛️", formato: "Digital", local: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf", genero: "Ciência", estante: "Nuvem Digital (E-books)" },
+            { id: 3, titulo: "1984", autor: "George Orwell", icone: "👁️", formato: "Físico", local: "Prateleira 1", genero: "Distopia", estante: "Estante Vermelha (Ficção)" }
+        ];
+
+        let emprestimos = [ { id: 1, idLivro: 1, idAluno: 3, dataDevolucao: "2026-07-20" } ];
+
+        let usuarioLogado = null;
+        let codigoGeradoPorBot = null;
+        let emailSendoRecuperado = null;
+        let portalSelecionado = ''; 
+
+        function mostrarNotificacao(titulo, mensagem) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = "pointer-events-auto bg-slate-900/90 border border-indigo-500/30 text-white p-4 sm:p-5 rounded-2xl shadow-2xl backdrop-blur-lg flex items-start gap-4 w-full max-w-sm transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] transform translate-x-10 opacity-0";
+            toast.innerHTML = `
+                <div class="bg-indigo-500/10 p-2 rounded-xl text-indigo-400 border border-indigo-500/20 mt-0.5"><span class="material-icons text-lg sm:text-xl">check_circle</span></div>
+                <div class="flex-1"><h4 class="font-bold text-xs sm:text-sm text-indigo-400 tracking-wide">${titulo}</h4><p class="text-[10px] sm:text-xs text-slate-300 mt-1 leading-relaxed">${mensagem}</p></div>
+                <button class="text-slate-500 hover:text-white transition-colors" onclick="removerToast(this.parentElement)"><span class="material-icons text-sm">close</span></button>
+            `;
+            container.appendChild(toast);
+            setTimeout(() => { toast.classList.remove('translate-x-10', 'opacity-0'); }, 50);
+            setTimeout(() => { removerToast(toast); }, 6000);
+        }
+
+        function removerToast(toastElement) {
+            if(!toastElement) return;
+            toastElement.classList.add('translate-x-10', 'opacity-0');
+            setTimeout(() => { toastElement.remove(); }, 500);
+        }
+
+        function criarLivrosFlutuantes() {
+            const emojis = ['📚', '📖', '📕', '📗', '📘', '📙', '✨'];
+            const container = document.getElementById('booksContainer');
+            container.innerHTML = '';
+            for(let i=0; i<12; i++) {
+                let book = document.createElement('div');
+                book.className = 'floating-book';
+                book.innerText = emojis[Math.floor(Math.random() * emojis.length)];
+                book.style.left = Math.random() * 100 + 'vw';
+                book.style.animationDuration = (Math.random() * 15 + 15) + 's';
+                book.style.animationDelay = (Math.random() * 10) + 's';
+                book.style.fontSize = (Math.random() * 1 + 1.1) + 'rem';
+                container.appendChild(book);
+            }
+        }
+        window.addEventListener('load', criarLivrosFlutuantes);
+
+        function selecionarPortal(portal) {
+            portalSelecionado = portal;
+            const title = document.getElementById('loginTitle');
+            const subtitle = document.getElementById('loginSubtitle');
+            
+            if (portal === 'aluno') {
+                title.innerText = "Portal do Aluno";
+                subtitle.innerText = "Consulte os seus livros e use o assistente IA.";
+            } else {
+                title.innerText = "Painel Administrativo";
+                subtitle.innerText = "Gestão interna de alunos, livros e transações.";
+            }
+            ajustarPasso('loginStep');
+        }
+
+        function voltarParaSelecao() { ajustarPasso('roleSelectionStep'); document.getElementById('loginErro').classList.add('hidden'); }
+        function voltarParaLogin() { ajustarPasso('loginStep'); }
+        function irParaPassoRecuperacao() { ajustarPasso('recuperarStep'); }
+
+        function fazerLogin(e) {
+            e.preventDefault();
+            const mat = document.getElementById('inputUsuario').value.trim();
+            const sen = document.getElementById('inputSenha').value;
+            const erro = document.getElementById('loginErro');
+
+            const user = usuarios.find(u => u.cadastro.toLowerCase() === mat.toLowerCase() && u.senha === sen);
+            
+            if(user) {
+                if (portalSelecionado === 'aluno' && user.tipo !== 'aluno') {
+                    erro.innerText = "Contas de administração devem entrar pelo portal Admin.";
+                    erro.classList.remove('hidden');
+                    return;
+                }
+                if (portalSelecionado === 'admin' && user.tipo === 'aluno') {
+                    erro.innerText = "Contas de Aluno devem entrar pelo portal do Aluno.";
+                    erro.classList.remove('hidden');
+                    return;
+                }
+
+                usuarioLogado = user;
+                erro.classList.add('hidden');
+                document.getElementById('telaLogin').classList.add('hidden');
+                document.getElementById('headerSistema').classList.remove('hidden');
+                
+                atualizarHeader();
+                mostrarNotificacao("Autenticado com Sucesso", `Bem-vindo, ${user.nome}!`);
+
+                if(user.tipo === 'admin') {
+                    document.getElementById('telaAdmin').classList.remove('hidden');
+                    document.getElementById('devSelector').className = "hidden";
+                    document.getElementById('divTipoConta').classList.add('hidden');
+                    carregarSelectsAdmin();
+                    atualizarTabelaEmprestimos();
+                } else if (user.tipo === 'dev') {
+                    document.getElementById('telaAdmin').classList.remove('hidden');
+                    document.getElementById('devSelector').className = "flex";
+                    document.getElementById('divTipoConta').classList.remove('hidden');
+                    togglePainelDev('admin');
+                    carregarSelectsAdmin();
+                    atualizarTabelaEmprestimos();
+                } else {
+                    document.getElementById('telaAluno').classList.remove('hidden');
+                    carregarMeusLivros();
+                    renderizarOrganizadorEstantes();
+                }
+            } else {
+                erro.innerText = "Dados incorretos. Verifique as suas credenciais.";
+                erro.classList.remove('hidden');
+            }
+        }
+
+        function togglePainelDev(painel) {
+            const btnAdmin = document.getElementById('btnDevAdmin');
+            const btnAluno = document.getElementById('btnDevAluno');
+            
+            if(painel === 'admin') {
+                document.getElementById('telaAdmin').classList.remove('hidden');
+                document.getElementById('telaAluno').classList.add('hidden');
+                btnAdmin.className = "px-3 py-1.5 text-[10px] sm:text-xs font-bold rounded-full transition-all bg-indigo-600 text-white";
+                btnAluno.className = "px-3 py-1.5 text-[10px] sm:text-xs font-bold rounded-full transition-all text-slate-400 hover:text-white";
+                
+                if (usuarioLogado.tipo === 'dev') document.getElementById('divTipoConta').classList.remove('hidden');
+                
+                carregarSelectsAdmin();
+                atualizarTabelaEmprestimos();
+            } else {
+                document.getElementById('telaAdmin').classList.add('hidden');
+                document.getElementById('telaAluno').classList.remove('hidden');
+                btnAluno.className = "px-3 py-1.5 text-[10px] sm:text-xs font-bold rounded-full transition-all bg-indigo-600 text-white";
+                btnAdmin.className = "px-3 py-1.5 text-[10px] sm:text-xs font-bold rounded-full transition-all text-slate-400 hover:text-white";
+                carregarMeusLivros();
+                renderizarOrganizadorEstantes();
+            }
+        }
+
+        function atualizarHeader() {
+            document.getElementById('headerNome').innerText = usuarioLogado.nome;
+            document.getElementById('headerTipo').innerText = usuarioLogado.tipo === 'dev' ? 'Desenvolvedor' : (usuarioLogado.tipo === 'admin' ? 'Administrador' : 'Aluno');
+            const avatar = document.getElementById('headerAvatar');
+            if(usuarioLogado.foto) avatar.src = usuarioLogado.foto;
+            else avatar.src = `https://api.dicebear.com/7.x/bottts/svg?seed=${usuarioLogado.cadastro}`;
+        }
+
+        function cadastrarAlunoAdmin(e) {
+            e.preventDefault();
+            const nome = document.getElementById('admCadNome').value;
+            const user = document.getElementById('admCadUser').value.trim();
+            const email = document.getElementById('admCadEmail').value;
+            const turma = document.getElementById('admCadTurma').value;
+            
+            const elTipo = document.getElementById('admCadTipo');
+            const tipoConta = (usuarioLogado.tipo === 'dev' && elTipo) ? elTipo.value : 'aluno';
+
+            if(usuarios.find(u => u.cadastro.toLowerCase() === user.toLowerCase())) { alert("Este Usuário já está em uso!"); return; }
+
+            usuarios.push({
+                id: usuarios.length + 1,
+                nome,
+                cadastro: user,
+                email,
+                senha: "123",
+                tipo: tipoConta,
+                turma: tipoConta === 'admin' ? 'Admin' : turma,
+                foto: ''
+            });
+
+            mostrarNotificacao("Usuário Registado", `Conta criada como ${tipoConta.toUpperCase()} com a senha padrão '123'.`);
+            e.target.reset();
+            carregarSelectsAdmin();
+        }
+
+        function cadastrarLivroAdmin(e) {
+            e.preventDefault();
+            const titulo = document.getElementById('livroTitulo').value;
+            const autor = document.getElementById('livroAutor').value;
+            const genero = document.getElementById('livroGenero').value;
+            const icone = document.getElementById('livroIcone').value;
+            const estante = document.getElementById('livroEstante').value;
+            const formato = document.getElementById('livroFormato').value;
+            const local = document.getElementById('livroLocal').value;
+
+            livros.push({ id: livros.length + 1, titulo, autor, genero, icone, estante, formato, local });
+            mostrarNotificacao("Livro Adicionado", `"${titulo}" inserido com sucesso.`);
+            e.target.reset();
+            carregarSelectsAdmin();
+        }
+
+        function toggleFormatoLivro() {
+            const formato = document.getElementById('livroFormato').value;
+            const labelLocal = document.getElementById('labelLocal');
+            const inputLocal = document.getElementById('livroLocal');
+            if(formato === 'Digital') { labelLocal.innerText = "Link do PDF"; inputLocal.placeholder = "https://..."; }
+            else { labelLocal.innerText = "Prateleira"; inputLocal.placeholder = "Prateleira 3"; }
+        }
+
+        function carregarSelectsAdmin() {
+            const selAluno = document.getElementById('selectAluno');
+            const selLivro = document.getElementById('selectLivro');
+            
+            selAluno.innerHTML = `<option value="">-- Selecione --</option>`;
+            usuarios.filter(u => u.tipo === 'aluno').forEach(aluno => {
+                selAluno.innerHTML += `<option value="${aluno.id}">${aluno.nome} (${aluno.turma})</option>`;
+            });
+
+            selLivro.innerHTML = `<option value="">-- Selecione --</option>`;
+            livros.filter(l => l.formato === 'Físico').forEach(livro => {
+                const emprestado = emprestimos.some(emp => emp.idLivro === livro.id);
+                if(!emprestado) selLivro.innerHTML += `<option value="${livro.id}">${livro.titulo} - Prateleira: ${livro.local}</option>`;
+            });
+        }
+
+        function registrarEmprestimo(e) {
+            e.preventDefault();
+            const idAluno = parseInt(document.getElementById('selectAluno').value);
+            const idLivro = parseInt(document.getElementById('selectLivro').value);
+            const dataDev = document.getElementById('dataDevolucao').value;
+            if(!idAluno || !idLivro || !dataDev) { alert("Por favor selecione todos os campos!"); return; }
+            emprestimos.push({ id: emprestimos.length + 1, idLivro, idAluno, dataDevolucao: dataDev });
+            mostrarNotificacao("Empréstimo Registado", "Livro emprestado com êxito!");
+            e.target.reset();
+            carregarSelectsAdmin();
+            atualizarTabelaEmprestimos();
+        }
+
+        function devolverLivro(idEmp) {
+            emprestimos = emprestimos.filter(emp => emp.id !== idEmp);
+            mostrarNotificacao("Devolvido", "Livro recolhido para o acervo.");
+            carregarSelectsAdmin();
+            atualizarTabelaEmprestimos();
+        }
+
+        function atualizarTabelaEmprestimos() {
+            const tbody = document.getElementById('tabelaEmprestimos');
+            tbody.innerHTML = '';
+            emprestimos.forEach(emp => {
+                const aluno = usuarios.find(u => u.id === emp.idAluno);
+                const livro = livros.find(l => l.id === emp.idLivro);
+                if(aluno && livro) {
+                    tbody.innerHTML += `
+                        <tr class="hover:bg-slate-900/30 transition-colors">
+                            <td class="p-4 font-bold text-white">${aluno.nome}</td>
+                            <td class="p-4 text-slate-400">${aluno.turma || 'Dev'}</td>
+                            <td class="p-4 flex items-center gap-2 text-white"><span>${livro.icone}</span> ${livro.titulo}</td>
+                            <td class="p-4 text-amber-400 font-semibold">${emp.dataDevolucao}</td>
+                            <td class="p-4 text-center">
+                                <button onclick="devolverLivro(${emp.id})" class="bg-emerald-600/10 hover:bg-emerald-600 text-emerald-400 hover:text-white px-3.5 py-1.5 rounded-lg text-xs font-bold border border-emerald-500/20 transition-all">Devolver</button>
+                            </td>
+                        </tr>
+                    `;
+                }
+            });
+            if(emprestimos.length === 0) tbody.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-slate-500 font-medium">Nenhum empréstimo ativo registado.</td></tr>`;
+        }
+
+        function carregarMeusLivros() {
+            const meusEmp = emprestimos.filter(emp => emp.idAluno === usuarioLogado.id);
+            document.getElementById('totalMeusEmprestimos').innerText = meusEmp.length;
+            document.getElementById('infoMinhaTurma').innerText = usuarioLogado.turma || "Não Alocado";
+        }
+
+        function renderizarOrganizadorEstantes() {
+            const container = document.getElementById('estantesContainer');
+            const query = document.getElementById('filtroAcervo').value.toLowerCase();
+            container.innerHTML = '';
+
+            const estantesAgrupadas = {};
+            livros.forEach(livro => {
+                if(livro.titulo.toLowerCase().includes(query) || livro.autor.toLowerCase().includes(query)) {
+                    if(!estantesAgrupadas[livro.estante]) estantesAgrupadas[livro.estante] = [];
+                    estantesAgrupadas[livro.estante].push(livro);
+                }
+            });
+
+            const chaves = Object.keys(estantesAgrupadas);
+            if(chaves.length === 0) { container.innerHTML = `<p class="text-center text-slate-500 py-10 font-bold">Nenhum livro foi encontrado no acervo.</p>`; return; }
+
+            chaves.forEach(nomeEstante => {
+                let section = document.createElement('div');
+                section.className = "space-y-4";
+                section.innerHTML = `
+                    <div class="flex items-center gap-2 border-b border-slate-800/80 pb-2">
+                        <span class="material-icons text-indigo-400">table_rows</span>
+                        <h4 class="text-base sm:text-lg font-bold text-white tracking-tight">${nomeEstante}</h4>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+                `;
+
+                const grid = section.querySelector('div.grid');
+                estantesAgrupadas[nomeEstante].forEach(livro => {
+                    const statusEmp = emprestimos.some(e => e.idLivro === livro.id);
+                    let botaoAcao = '';
+
+                    if(livro.formato === 'Digital') {
+                        botaoAcao = `<a href="${livro.local}" target="_blank" class="w-full text-center bg-indigo-600 hover:bg-indigo-500 py-2.5 rounded-xl font-bold text-xs sm:text-sm block transition-all shadow-md">Ler E-Book (PDF)</a>`;
+                    } else {
+                        botaoAcao = statusEmp 
+                            ? `<span class="w-full text-center bg-red-600/10 border border-red-500/20 text-red-400 py-2.5 rounded-xl font-bold text-[10px] sm:text-xs block uppercase tracking-wider">Indisponível</span>`
+                            : `<span class="w-full text-center bg-slate-900 border border-slate-800 text-slate-400 py-2.5 rounded-xl text-[10px] sm:text-xs block font-bold">${livro.local}</span>`;
+                    }
+
+                    grid.innerHTML += `
+                        <div class="glass-card p-4 sm:p-5 rounded-2xl flex flex-col justify-between space-y-4 hover:border-slate-700/60 transition-all">
+                            <div class="flex gap-4">
+                                <div class="text-3xl sm:text-4xl bg-slate-950/80 p-3 rounded-2xl border border-slate-800 flex items-center justify-center shrink-0 w-14 h-14 sm:w-16 sm:h-16">${livro.icone}</div>
+                                <div>
+                                    <h5 class="font-extrabold text-white text-sm sm:text-base leading-tight">${livro.titulo}</h5>
+                                    <p class="text-[10px] sm:text-xs text-indigo-400 font-semibold mt-1">${livro.autor}</p>
+                                    <span class="inline-block bg-slate-900 text-slate-400 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded mt-2">${livro.genero}</span>
+                                </div>
+                            </div>
+                            <div class="pt-2">${botaoAcao}</div>
+                        </div>
+                    `;
+                });
+                container.appendChild(section);
+            });
+        }
+
+        // --- SISTEMA IA UNIVERSAL COM FILTRO DE CONTEÚDO EXPLÍCITO ---
+        function perguntarIA(e) {
+            e.preventDefault();
+            const input = document.getElementById('chatInput');
+            const texto = input.value.trim();
+            if(!texto) return;
+
+            adicionarBolhaChat(texto, true);
+            input.value = '';
+
+            const container = document.getElementById('chatConversa');
+            const loadId = 'loading-' + Date.now();
+            const typingDiv = document.createElement('div');
+            typingDiv.id = loadId;
+            typingDiv.className = 'flex items-start gap-2 mb-4';
+            typingDiv.innerHTML = `
+                <div class="bg-indigo-500 w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-md"><span class="material-icons text-white text-xs">smart_toy</span></div>
+                <div class="bg-slate-900 border border-slate-850 p-3 rounded-2xl rounded-tl-none text-xs sm:text-sm text-slate-200 flex items-center gap-1.5 shadow-md h-10">
+                    <div class="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce"></div>
+                    <div class="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce" style="animation-delay: 0.15s"></div>
+                    <div class="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce" style="animation-delay: 0.3s"></div>
+                </div>
+            `;
+            container.appendChild(typingDiv);
+            container.scrollTop = container.scrollHeight;
+
+            setTimeout(() => {
+                document.getElementById(loadId).remove();
+                
+                const query = texto.toLowerCase();
+                
+                // Lista de termos e palavras proibidas (Conteúdo Explícito / Adulto / Inadequado)
+                const termosProibidos = [
+                    'sexo', 'pornografia', 'porno', 'pornô', 'nude', 'nudes', 'erótico', 'erotico', 
+                    'orgia', 'conteudo explicito', 'explícito', 'sangue', 'gore', 'suicidio', 'suicídio',
+                    'pelado', 'pelada', 'sexual'
+                ];
+
+                const contemExplicito = termosProibidos.some(termo => query.includes(termo));
+
+                let resposta = "";
+
+                if (contemExplicito) {
+                    resposta = "⚠️ **Aviso de Segurança**: Desculpe, não posso responder a perguntas ou gerar conteúdos de teor explícito, adulto ou inadequado. Como assistente do Biblivre, estou aqui para ajudar com estudos, livros e conhecimentos gerais de forma segura.";
+                } else {
+                    // Base de conhecimento específica de livros do acervo
+                    const baseLivros = [
+                        { keys: ['dom casmurro', 'machado', 'capitu'], resp: "<b>Dom Casmurro</b> é uma obra-prima de 1899 escrita por Machado de Assis. Narra a história de Bento Santiago e a icônica dúvida sobre a fidelidade de Capitu. Temos este livro físico no acervo!" },
+                        { keys: ['física', 'quântica', 'ciência'], resp: "O livro de <b>Física Quântica Moderna</b> aborda as principais teorias da mecânica de partículas subatómicas de maneira acessível. Pode ler em PDF pesquisando-o acima!" },
+                        { keys: ['arte da guerra', 'sun tzu'], resp: "<b>A Arte da Guerra</b> de Sun Tzu é um antigo e reverenciado clássico chinês sobre estratégia tática, adotado também por líderes modernos empresariais." },
+                        { keys: ['1984', 'orwell', 'distopia'], resp: "<b>1984</b> é um aclamado romance de George Orwell. Aborda temas como a repressão do estado pelo Grande Irmão (Big Brother) e a extrema vigilância governamental." },
+                        { keys: ['olá', 'tudo bem', 'oi', 'hey'], resp: "Olá! Sou a IA Avançada do Biblivre. Posso conversar sobre livros, ciências, história, matemática ou qualquer outra área de interesse acadêmico e geral!" }
+                    ];
+
+                    let encontrado = false;
+                    for(let item of baseLivros) {
+                        if(item.keys.some(k => query.includes(k))) {
+                            resposta = item.resp;
+                            encontrado = true;
+                            break;
+                        }
+                    }
+
+                    // Se não for um livro específico, responde de forma inteligente e versátil a qualquer outro assunto geral
+                    if (!encontrado) {
+                        resposta = `Compreendi a sua questão sobre "${texto}". Como assistente de IA universal do Biblivre, posso afirmar que esse é um excelente tópico para explorar! Se precisar de resumos, explicações detalhadas sobre história, ciências, gramática ou apoio com o acervo da biblioteca, basta perguntar.`;
+                    }
+                }
+
+                adicionarBolhaChat(resposta, false);
+            }, 1200);
+        }
+
+        function adicionarBolhaChat(texto, doAluno) {
+            const container = document.getElementById('chatConversa');
+            const div = document.createElement('div');
+
+            if(doAluno) {
+                div.className = 'flex items-start gap-2 mb-4 justify-end';
+                const f = usuarioLogado.foto || `https://api.dicebear.com/7.x/bottts/svg?seed=${usuarioLogado.cadastro}`;
+                div.innerHTML = `
+                    <div class="bg-indigo-600/10 border border-indigo-500/20 p-3 rounded-2xl rounded-tr-none text-xs sm:text-sm text-indigo-200 max-w-[85%] shadow-md leading-relaxed">${texto}</div>
+                    <img src="${f}" class="w-8 h-8 rounded-full border border-indigo-400 object-cover bg-slate-800 shrink-0">
+                `;
+            } else {
+                div.className = 'flex items-start gap-2 mb-4';
+                div.innerHTML = `
+                    <div class="bg-indigo-500 w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-md"><span class="material-icons text-white text-xs">smart_toy</span></div>
+                    <div class="bg-slate-900 border border-slate-850 p-3 rounded-2xl rounded-tl-none text-xs sm:text-sm text-slate-200 max-w-[85%] shadow-md leading-relaxed">${texto}</div>
+                `;
+            }
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        let fotoEmCache = '';
+        function abrirModalPerfil() {
+            document.getElementById('modalPerfil').classList.remove('hidden');
+            const preview = document.getElementById('previewNovaFoto');
+            preview.src = usuarioLogado.foto || `https://api.dicebear.com/7.x/bottts/svg?seed=${usuarioLogado.cadastro}`;
+            fotoEmCache = usuarioLogado.foto;
+        }
+        function fecharModalPerfil() { document.getElementById('modalPerfil').classList.add('hidden'); }
+
+        function gerarFotoIA() {
+            const l = document.getElementById('loadingIA');
+            l.classList.remove('hidden');
+            setTimeout(() => {
+                const api = `https://api.dicebear.com/7.x/bottts/svg?seed=${Math.floor(Math.random() * 10000)}`;
+                document.getElementById('previewNovaFoto').src = api;
+                fotoEmCache = api;
+                l.classList.add('hidden');
+            }, 1200);
+        }
+
+        function salvarNovaFoto() {
+            usuarioLogado.foto = fotoEmCache;
+            atualizarHeader();
+            fecharModalPerfil();
+            mostrarNotificacao("Perfil Atualizado", "A imagem do perfil foi salva com sucesso.");
+        }
+
+        function dispararBotCodigo() {
+            const email = document.getElementById('recuperarEmail').value.trim();
+            const u = usuarios.find(us => us.email.toLowerCase() === email.toLowerCase());
+            if(!u) { alert("Nenhuma conta com este e-mail foi encontrada!"); return; }
+
+            emailSendoRecuperado = email;
+            codigoGeradoPorBot = Math.floor(100000 + Math.random() * 900000).toString();
+            
+            const btn = document.getElementById('btnEnviarEmail');
+            const textoEnvio = document.getElementById('textoEnvio');
+            const iconEnvio = document.getElementById('iconEnvio');
+
+            btn.disabled = true; btn.style.opacity = "0.7"; textoEnvio.innerText = "A enviar e-mail...";
+            iconEnvio.innerText = "autorenew"; iconEnvio.classList.add("animate-spin");
+
+            setTimeout(() => {
+                btn.disabled = false; btn.style.opacity = "1"; textoEnvio.innerText = "Mandar Código de Segurança";
+                iconEnvio.innerText = "email"; iconEnvio.classList.remove("animate-spin");
+                alert(`[SIMULAÇÃO]\nCódigo de Verificação para ${email}: ${codigoGeradoPorBot}`);
+                ajustarPasso('codigoStep');
+            }, 2000);
+        }
+
+        function validarCode() {
+            const digito = document.getElementById('codigoVerificacao').value.trim();
+            if(digito === codigoGeradoPorBot) ajustarPasso('novaSenhaStep');
+            else alert("Código incorreto!");
+        }
+
+        function salvarNovaSenha() {
+            const n = document.getElementById('novaSenhaInput').value;
+            const c = document.getElementById('novaSenhaConfirmInput').value;
+            if(n !== c) { alert("As palavras-passes não coincidem!"); return; }
+            const u = usuarios.find(us => us.email.toLowerCase() === emailSendoRecuperado.toLowerCase());
+            if(u) {
+                u.senha = n;
+                mostrarNotificacao("Sucesso", "Nova palavra-passe configurada.");
+                ajustarPasso('loginStep');
+            }
+        }
+
+        function fazerLogout() {
+            usuarioLogado = null;
+            document.getElementById('telaAdmin').classList.add('hidden');
+            document.getElementById('telaAluno').classList.add('hidden');
+            document.getElementById('headerSistema').classList.add('hidden');
+            document.getElementById('telaLogin').classList.remove('hidden');
+            ajustarPasso('roleSelectionStep'); 
+        }
+    </script>
+</body>
+</html>
